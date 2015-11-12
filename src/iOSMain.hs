@@ -1,16 +1,41 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Main where
-import HXNetworking
-import Foreign.C
-import Graphics.UI.SDL as SDL
-import Graphics.UI.SDL.Mouse 
+import           Control.Concurrent
+import           Control.Monad
+import           Graphics.UI.SDL    as SDL
+import           System.Random
+import           System.Exit
+
+screenWidth = 380
+screenHeight = 480
+
+render :: Renderer -> IO ()
+render renderer = do
+       putStrLn "render frame"
+       setRenderDrawColor renderer 0 0 0 255
+       renderClear renderer
+       w <- randomRIO (64, 128)
+       h <- randomRIO (64, 128)
+       x <- randomRIO (0 , screenWidth)
+       y <- randomRIO (0 , screenHeight)
+       let rect = Rect x y w h
+       r <- randomRIO (50, 255)
+       g <- randomRIO (50, 255)
+       b <- randomRIO (50, 255)
+       setRenderDrawColor renderer r g b 255
+       renderFillRect renderer rect
+       renderPresent renderer
 
 foreign export ccall "haskell_main" main :: IO ()
 main :: IO ()
-main = withInit [InitVideo, InitEvents] $ do
-     window <- createWindow "HXSDL" (Position 0 0) (Size 640 480) [WindowOpengl]
-     glSwapWindow window
-     putStrLn "Created Window"
-     renderer <- createRenderer window (Device (-1)) [Accelerated, PresentVSync]
-     putStrLn "Created Renderer"
-     loop (display renderer)
+main = withInit [InitVideo] $ do
+     window <- createWindow "test" (Position 0 0) (Size screenWidth screenHeight) [WindowOpengl, WindowBorderless]
+     renderer <- createRenderer window (Device (-1)) []
+     let loop = do
+                 render renderer
+                 event <- waitEvent
+                 print event
+                 case fmap eventData event of
+                   Just Quit -> exitSuccess
+                   _ -> return ()
+                 loop
+     loop
