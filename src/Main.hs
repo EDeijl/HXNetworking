@@ -1,41 +1,30 @@
 {-# LANGUAGE OverloadedStrings #-}
-import           Control.Concurrent
-import           Control.Monad
-import           Graphics.UI.SDL    as SDL
-import           System.Random
+import           Graphics.Rendering.OpenGL
+import qualified Graphics.UI.SDL           as SDL
 import           System.Exit
 
+screenWidth, screenHeight :: Int
 screenWidth = 380
 screenHeight = 480
 
-render :: Renderer -> IO ()
-render renderer = do
+render :: SDL.Window -> SDL.GLContext -> IO ()
+render window context = do
        putStrLn "render frame"
-       setRenderDrawColor renderer 0 0 0 255
-       renderClear renderer
-       w <- randomRIO (64, 128)
-       h <- randomRIO (64, 128)
-       x <- randomRIO (0 , screenWidth)
-       y <- randomRIO (0 , screenHeight)
-       let rect = Rect x y w h
-       r <- randomRIO (50, 255)
-       g <- randomRIO (50, 255)
-       b <- randomRIO (50, 255)
-       setRenderDrawColor renderer r g b 255
-       renderFillRect renderer rect
-       renderPresent renderer
+       clearColor $= Color4 0 0 0 1
+       clear [ColorBuffer]
+       SDL.glSwapWindow window
 
 foreign export ccall "haskell_main" main :: IO ()
 main :: IO ()
-main = withInit [InitVideo] $ do
-     window <- createWindow "test" (Position 0 0) (Size screenWidth screenHeight) [WindowShown]
-     renderer <- createRenderer window (Device (-1)) []
+main = SDL.withInit [SDL.InitVideo] $ do
+     window <- SDL.createWindow "test" (SDL.Position 0 0) (SDL.Size screenWidth screenHeight) [SDL.WindowShown]
+     glContext <- SDL.glCreateContext window
      let loop = do
-                 render renderer
-                 event <- pollEvent
+                 render window glContext
+                 event <- SDL.pollEvent
                  print event
-                 case fmap eventData event of
-                   Just Quit -> exitSuccess
+                 case fmap SDL.eventData event of
+                   Just SDL.Quit -> exitSuccess
                    _ -> return ()
                  loop
      loop

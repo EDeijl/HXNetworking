@@ -40,7 +40,7 @@ executable HXNetworking
                      , bytestring
                      , network-simple
                      , SDL2
-                     , random
+                     , OpenGL
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:         -Wall
