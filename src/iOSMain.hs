@@ -1,41 +1,23 @@
 {-# LANGUAGE OverloadedStrings #-}
-import           Control.Concurrent
-import           Control.Monad
-import           Graphics.UI.SDL    as SDL
-import           System.Random
+module IOSMain where
+import qualified Graphics.UI.SDL           as SDL
+import           HXNetworking
 import           System.Exit
 
+screenWidth, screenHeight :: Int
 screenWidth = 380
 screenHeight = 480
 
-render :: Renderer -> IO ()
-render renderer = do
-       putStrLn "render frame"
-       setRenderDrawColor renderer 0 0 0 255
-       renderClear renderer
-       w <- randomRIO (64, 128)
-       h <- randomRIO (64, 128)
-       x <- randomRIO (0 , screenWidth)
-       y <- randomRIO (0 , screenHeight)
-       let rect = Rect x y w h
-       r <- randomRIO (50, 255)
-       g <- randomRIO (50, 255)
-       b <- randomRIO (50, 255)
-       setRenderDrawColor renderer r g b 255
-       renderFillRect renderer rect
-       renderPresent renderer
-
 foreign export ccall "haskell_main" main :: IO ()
 main :: IO ()
-main = withInit [InitVideo] $ do
-     window <- createWindow "test" (Position 0 0) (Size screenWidth screenHeight) [WindowOpengl, WindowBorderless]
-     renderer <- createRenderer window (Device (-1)) []
+main = SDL.withInit [SDL.InitVideo] $ do
+     window <- SDL.createWindow "test" (SDL.Position 0 0) (SDL.Size screenWidth screenHeight) [SDL.WindowShown]
+     glContext <- SDL.glCreateContext window
+     renderer <- SDL.createRenderer window (SDL.Device (-1)) []
      let loop = do
-                 render renderer
-                 event <- waitEvent
-                 print event
-                 case fmap eventData event of
-                   Just Quit -> exitSuccess
-                   _ -> return ()
+                 event <- SDL.waitEvent
+                 case fmap SDL.eventData event of
+                   Just SDL.Quit -> exitSuccess
+                   _ -> print event >> render window renderer glContext
                  loop
      loop

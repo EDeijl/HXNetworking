@@ -1,30 +1,26 @@
 {-# LANGUAGE OverloadedStrings #-}
-import           Graphics.Rendering.OpenGL
+module Main where
 import qualified Graphics.UI.SDL           as SDL
+import           HXNetworking
 import           System.Exit
 
 screenWidth, screenHeight :: Int
 screenWidth = 380
 screenHeight = 480
 
-render :: SDL.Window -> SDL.GLContext -> IO ()
-render window context = do
-       putStrLn "render frame"
-       clearColor $= Color4 0 0 0 1
-       clear [ColorBuffer]
-       SDL.glSwapWindow window
-
 foreign export ccall "haskell_main" main :: IO ()
 main :: IO ()
 main = SDL.withInit [SDL.InitVideo] $ do
      window <- SDL.createWindow "test" (SDL.Position 0 0) (SDL.Size screenWidth screenHeight) [SDL.WindowShown]
      glContext <- SDL.glCreateContext window
+     renderer <- SDL.createRenderer window (SDL.Device (-1)) []
      let loop = do
-                 render window glContext
-                 event <- SDL.pollEvent
-                 print event
+                 event <- SDL.waitEvent
                  case fmap SDL.eventData event of
                    Just SDL.Quit -> exitSuccess
-                   _ -> return ()
+                   Just ( SDL.MouseMotion _ _ _ _ _ _ ) -> return ()
+                   Just ( SDL.Keyboard  _ _ _ _ ) -> render window renderer glContext
+                   Just ( SDL.TouchFinger  _ _ _ _ _ _ _ _ _ ) -> render window renderer glContext
+                   _ -> print event
                  loop
      loop
