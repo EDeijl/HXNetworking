@@ -6,9 +6,9 @@ module Reactive.Banana.SDL ( module Reactive.Banana.SDL.Types
 
 import           Control.Monad
 import           Data.Maybe
-import           Data.Word
+-- import           Data.Word
 import           Graphics.UI.SDL            as SDL
-import           Reactive.Banana            as R
+-- import           Reactive.Banana            as R
 import           Reactive.Banana.Frameworks (newAddHandler)
 import           Reactive.Banana.SDL.Types
 import           Reactive.Banana.SDL.Util
@@ -19,13 +19,17 @@ getSDLEventSource = SDLEventSource <$> newAddHandler <*> newAddHandler
 -- | one step in the main event loop, returning False when it needs to stop
 mainSDLPump :: SDLEventSource -> IO Bool
 mainSDLPump es = do
+    putStrLn "start main SDL pump"
     let esdl = getSDLEvent es
         etick = getTickEvent es
     tick <- SDL.getTicks
+    putStrLn "Got ticks"
     me <- collectEvents
+    putStrLn "collected events"
     case me of
       Nothing -> return False
       Just e -> do
+           print e
            fire esdl e
            fire etick tick
            return True
@@ -35,6 +39,8 @@ mainSDLPump es = do
 collectEvents :: IO (Maybe [SDL.Event])
 collectEvents = do
     e <- pollEvent
+    putStrLn "Event: "
+    print e
     case e of
         Just (Event _ Quit ) -> return Nothing
         Just (Event _ _ ) -> liftM (liftM ((fromJust e):)) collectEvents

@@ -9,9 +9,11 @@ import           Reactive.Banana.SDL.Graphics.Types
 
 import           Control.Monad                      (void)
 import           Data.Lens.Common
+-- import           Data.Maybe
 import           Graphics.UI.SDL                    as SDL hiding (flip)
-import qualified Graphics.UI.SDL                    as SDL (flip)
-import           Graphics.UI.SDL.Image              (load)
+-- import           Graphics.UI.SDL.Color
+-- import           Graphics.UI.SDL.Image
+import           Graphics.UI.SDL.Surface            as SDL
 import           Graphics.UI.SDL.TTF
 import           Reactive.Banana                    as R
 import           Reactive.Banana.Frameworks         (Frameworks, changes,
@@ -39,8 +41,8 @@ emptyG :: Graphic
 emptyG = Graphic $ \_ -> return Nothing
 
 -- | render and swap
-render :: Graphic -> Graphic
-render (Graphic x) = Graphic $ \surface -> x surface >> SDL.flip surface >> return Nothing
+render :: Window -> Graphic -> Graphic
+render window (Graphic x) = Graphic $ \surface -> x surface >> updateWindowSurface window >> return Nothing
 
 withinBox :: Rect -> Graphic -> GraphicOpt
 withinBox r g r'=
@@ -71,37 +73,40 @@ intersect r1 r2 = xintersect && yintersect
 between :: Int -> (Int,Int) -> Bool
 between x (l,h) = x >= l && x <= h
 
-instance Draw SDL.Surface Mask where
-    draw src mask = Graphic $ \dst -> blitSurface src clip dst offset >> return offset
+instance Draw Surface Mask where
+    draw src mask = Graphic $ \dst -> SDL.blitSurface src clip dst offset >> return offset
         where
-            clip = maskClip ^$ mask
-            offset = Just Rect { rectX = maskX ^$ mask, rectY = maskY ^$ mask, rectW = 0, rectH = 0 }
+              clip = maskClip ^$ mask
+              offset = Just Rect { rectX = maskX ^$ mask, rectY = maskY ^$ mask, rectW = 0, rectH = 0 }
 
 instance Draw Fill Mask where
-    draw fill mask = Graphic $ \dst -> pixel dst >>= \c ->  fillRect dst clip c >> return Nothing
+    draw fill mask = Graphic $ \dst -> pixel dst >>= \c -> fillRect dst clip c >> return Nothing
         where
-            pixel dst = (mapRGB . surfaceGetPixelFormat) dst (colorRed color) (colorGreen color) (colorBlue color)
-            clip = fillClip ^$ fill
-            color = fillColor ^$ fill
+                pixel dst = do pf <- SDL.surfaceFormat dst
+                               p <- mapRGB pf (colorRed color) (colorGreen color) (colorBlue color)
+                               (r,g,b) <- getRGB (Pixel p) pf
+                               return $ Color r g b 255
+                clip = fillClip ^$ fill
+                color = fillColor ^$ fill
 
 instance Draw Text Mask where
     draw text mask = Graphic $ \dst -> blitText dst
         where
-            blitText dst = do
-                --sz <- textSize (textFont ^$ text) (textMsg ^$ text)
-                txt <- renderTextBlended (textFont ^$ text) (textMsg ^$ text) (textColor ^$ text)
-                blitSurface txt clip dst offset
-                freeSurface txt
-                return offset
-            clip = maskClip ^$ mask
-            offset = Just Rect { rectX = maskX ^$ mask, rectY = maskY ^$ mask, rectW = 0, rectH = 0 }
+                blitText dst = do
+                    --sz <- textSize (textFont ^$ text) (textMsg ^$ text)
+                    txt <- renderTextBlended (textFont ^$ text) (textMsg ^$ text) (textColor ^$ text)
+                    blitSurface txt clip dst offset
+                    freeSurface txt
+                    return offset
+                clip = maskClip ^$ mask
+                offset = Just Rect { rectX = maskX ^$ mask, rectY = maskY ^$ mask, rectW = 0, rectH = 0 }
 
 instance Draw Image Mask where
     draw img mask = Graphic $ \dst -> blitText dst
         where
             blitText dst = do
                 --sz <- textSize (textFont ^$ text) (textMsg ^$ text)
-                is<-load $ imagePath ^$ img
+                is<-loadBMP $ imagePath ^$ img
                 blitSurface is clip dst offset
                 freeSurface is
                 return offset
@@ -122,36 +127,36 @@ instance Draw LoadedImage Mask where
 instance Draw AlignedText Rect where
     draw text rect = Graphic $ \dst -> blitText dst
         where
-            blitText dst = do
-                tr<-getTextRect text rect
-                let offset = Just Rect { rectX = rectX tr, rectY = rectY tr, rectW = 0, rectH = 0 }
-                txt <- renderTextBlended (textFont ^$  atextText ^$ text) (textMsg ^$  atextText ^$ text) (textColor ^$ atextText ^$ text)
-                blitSurface txt Nothing dst offset
-                freeSurface txt
-                return offset
+              blitText dst = do
+                  tr<-getTextRect text rect
+                  let offset = Just Rect { rectX = rectX tr, rectY = rectY tr, rectW = 0, rectH = 0 }
+                  txt <- renderTextBlended (textFont ^$  atextText ^$ text) (textMsg ^$  atextText ^$ text) (textColor ^$ atextText ^$ text)
+                  blitSurface txt Nothing dst offset
+                  freeSurface txt
+                  return offset
 
 -- | get the text rect given the alignment, inside the given rectangle
 getTextRect :: AlignedText -> Rect -> IO Rect
 getTextRect text rect=do
-  (w,h) <- textSize (textFont ^$ atextText ^$ text) (textMsg ^$ atextText ^$ text)
+  (w,h) <- sizeText (textFont ^$ atextText ^$ text) (textMsg ^$ atextText ^$ text)
   let x=case atextHAlign ^$ text of
-          Start->rectX rect
-          Middle->rectX rect+((rectW rect - w) `div` 2)
-          End->rectX rect + rectW rect-w
+            Start->rectX rect
+            Middle->rectX rect+((rectW rect - w) `div` 2)
+            Reactive.Banana.SDL.Graphics.Types.End->rectX rect + rectW rect-w
   let y=case atextVAlign ^$ text of
-          Start->rectY rect
-          Middle->rectY rect+((rectY rect - h) `div` 2)
-          End->rectY rect + rectY rect-h
+            Start->rectY rect
+            Middle->rectY rect+((rectY rect - h) `div` 2)
+            Reactive.Banana.SDL.Graphics.Types.End->rectY rect + rectY rect-h
   return  Rect { rectX = x, rectY = y, rectW = w, rectH = h }
 
 -- | render Graph given a behavior for Graphics and a behavior for the Screen
-renderGraph :: Frameworks t => Behavior t Graphic -> Behavior t Screen -> Moment t ()
-renderGraph bgraph bscreen = do
-    egraph <- changes $ render <$> bgraph
+renderGraph :: Frameworks t => Behavior t Graphic -> Behavior t Screen -> Window -> Moment t ()
+renderGraph bgraph bscreen window = do
+    egraph <- changes $ (render window) <$> bgraph
     reactimate' $ (\b fe -> fe >>= \e -> return $ void $ paintGraphic e b) <$> bscreen <@> egraph
 
 -- | render graph on a event
-renderGraphOnEvent :: Frameworks t => Behavior t Graphic -> Behavior t Screen -> R.Event t a -> Moment t ()
-renderGraphOnEvent bgraph bscreen event =
-    reactimate $ (\a->void . paintGraphic a) <$> render <$> bgraph <*> bscreen <@ event
+renderGraphOnEvent :: Frameworks t => Behavior t Graphic -> Behavior t Screen -> R.Event t a -> Window -> Moment t ()
+renderGraphOnEvent bgraph bscreen event window =
+    reactimate $ (\a->void . paintGraphic a) <$> (render window) <$> bgraph <*> bscreen <@ event
 
