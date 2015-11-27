@@ -2,26 +2,27 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
-import qualified Graphics.UI.SDL as SDL
-import Graphics.UI.SDL.Surface as SDL
-import qualified Graphics.UI.SDL.TTF as TTF
-import qualified Graphics.UI.SDL.TTF.Types as TTF
+import qualified Graphics.UI.SDL              as SDL
+import           Graphics.UI.SDL.Surface      as SDL
+import qualified Graphics.UI.SDL.TTF          as TTF
+import qualified Graphics.UI.SDL.TTF.Types    as TTF
 
-import Reactive.Banana
-import Reactive.Banana.SDL
-import Reactive.Banana.SDL.Graphics
+import           Reactive.Banana
+import           Reactive.Banana.SDL
+import           Reactive.Banana.SDL.Graphics
 
-import Data.Char
-import qualified Data.Map as M
-import Data.Word
-import System.Random
-import System.FilePath
+import           Data.Char
+import           Data.Maybe
+import qualified Data.Map                     as M
+import           Data.Word
+import           System.FilePath
+import           System.Random
 
-import Paths_HXNetworking
-import Control.Monad.IO.Class (liftIO)
-import Reactive.Banana.Frameworks (actuate, showNetwork, Frameworks)
-import Control.Monad (void)
- 
+import           Control.Monad                (void)
+import           Control.Monad.IO.Class       (liftIO)
+import           Paths_HXNetworking
+import           Reactive.Banana.Frameworks   (Frameworks, actuate, showNetwork)
+
 screenWidth, screenHeight :: Int
 screenWidth = 380
 screenHeight = 480
@@ -42,23 +43,20 @@ main = do
 
 initGraphics :: IO GraphicsData
 initGraphics =
-     SDL.withInit [SDL.InitVideo] $
+     SDL.withInit [SDL.InitVideo, SDL.InitEvents] $
      TTF.withInit $ do
      dd <-getDataDir
      realFont <-TTF.openFont (dd </> "font" </> "FreeSansBold.ttf") 24
      window <- SDL.createWindow "test" (SDL.Position 0 0) (SDL.Size screenWidth screenHeight) [SDL.WindowShown]
      putStrLn "Created Window"
      print window
-     glContext <- SDL.glCreateContext window
-     putStrLn "Created Context"
-     print glContext
-     renderer <- SDL.createRenderer window (SDL.Device (-1)) []
-     putStrLn "Created renderer"
-     print renderer
-     surface <- SDL.createRGBSurface 380 480 0 0 0 0 255
-     print surface
-     putStrLn "get surface"
-     return $ GraphicsData realFont surface window glContext renderer
+     err <- SDL.getError
+     mapM_ putStrLn $ fmap ("error in initGraphics: " ++) err
+     maybeSurface <- SDL.getWindowSurface window
+     print maybeSurface
+     err <- SDL.getError
+     mapM_ putStrLn $ fmap ("error in initGraphics: " ++) err
+     return $ GraphicsData realFont maybeSurface window
 
 setupNetwork :: Frameworks t => SDLEventSource -> GraphicsData -> Moment t ()
 setupNetwork es gd= do
@@ -70,7 +68,7 @@ setupNetwork es gd= do
       startGraphic :: Graphic
       startGraphic = draw (Fill (SDL.Rect 0 0 width height) black) (Mask Nothing 0 0)
       bScreen :: Behavior t Screen
-      bScreen = pure (gd_mainSurface gd)
+      bScreen = pure $ fromJust (gd_mainSurface gd)
       eGSChange = (updateGS <$> eTickDiff) `union` (updateGSOnKey <$> keyDownEvent esdl)
       bGameState =accumB gsInitial eGSChange
       livesG GameState{gs_lives}=draw (Text ("Lives:" ++ show gs_lives ++ "/" ++ show lives) (gd_font gd) red) (Mask Nothing 0 0)
@@ -78,12 +76,12 @@ setupNetwork es gd= do
       scoreG GameState{gs_score}=draw (Text ("Score:" ++ show gs_score) (gd_font gd) red) (Mask Nothing (halfW+1) 0)
       -- | draw a character
       charG (c,(x,y))= draw (Text [c] (gd_font gd) white) (Mask Nothing x y)
-      -- | draw characters      
+      -- | draw characters
       charsG GameState{gs_shown}=let
               chars=map charG (M.assocs gs_shown)
               in (Graphic $ \surface ->mapM_ (\(Graphic f)->void $ f surface) chars >> return Nothing)
       -- | game over
-      gameOverG GameState{gs_score}=draw (Text "Game Over!" (gd_font gd) red) (Mask Nothing (halfW-40) (halfH-20))  
+      gameOverG GameState{gs_score}=draw (Text "Game Over!" (gd_font gd) red) (Mask Nothing (halfW-40) (halfH-20))
                                     `over`
                                     draw (Text ("Score:" ++ show gs_score) (gd_font gd) red) (Mask Nothing (halfW-40) (halfH+10))
       bG= (\g->if gs_lives g > 0
@@ -129,10 +127,9 @@ halfH = div height 2
 
 data GraphicsData = GraphicsData {
  gd_font        :: TTF.TTFFont,
- gd_mainSurface :: SDL.Surface,
- gd_window      :: SDL.Window,
- gd_context     :: SDL.GLContext,
- gd_renderer    :: SDL.Renderer }
+ gd_mainSurface :: Maybe SDL.Surface,
+ gd_window      :: SDL.Window
+}
 
 data GameState = GameState {
      gs_moves             :: Int

@@ -29,7 +29,7 @@ mainSDLPump es = do
     case me of
       Nothing -> return False
       Just e -> do
-           print e
+           putStrLn $ "event: " ++ show e
            fire esdl e
            fire etick tick
            return True
@@ -39,12 +39,12 @@ mainSDLPump es = do
 collectEvents :: IO (Maybe [SDL.Event])
 collectEvents = do
     e <- pollEvent
-    putStrLn "Event: "
-    print e
+    err <- SDL.getError
+    mapM_ putStrLn $ fmap ("error in collectEvents: " ++) err
     case e of
-        Just (Event _ Quit ) -> return Nothing
-        Just (Event _ _ ) -> liftM (liftM ((fromJust e):)) collectEvents
-        _ -> return (Just [])
+        Just ev@(Event _ Quit ) -> putStrLn ("Event: " ++ show ev)  >> return Nothing
+        Just ev@(Event _ _ ) -> putStrLn ("Event: " ++ show ev)  >> liftM (liftM ((fromJust e):)) collectEvents
+        _ -> putStrLn "No event" >> return (Just [])
 
 -- | main event loop
 runSDLPump :: SDLEventSource -> IO ()
