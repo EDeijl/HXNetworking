@@ -35,8 +35,6 @@ main = do
      putStrLn "initialized all graphics"
      network <- compile $ setupNetwork sdlES graphicsInit
      putStrLn "Compiled the FRP network"
-     networkString <- showNetwork network
-     writeFile "network.txt" networkString
      actuate network
      putStrLn "actuate the FRP network"
      runCappedSDLPump 30 sdlES
