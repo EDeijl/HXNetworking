@@ -108,7 +108,7 @@ successive f e = filterJust (b <@> e)
 
 -- | fires when the given key is pressed (down + up)
 --keyPressed :: SDL.SDLKey -> WrappedEvent t -> WrappedEvent t
-keyPressed :: SDL.Keycode -> WrappedEvent t -> WrappedEvent t             
+keyPressed :: SDL.Keycode -> WrappedEvent t -> WrappedEvent t
 keyPressed k = collect . successive (\p c -> if keyDownFilter k p && keyUpFilter k c then Just c else Nothing) . spill . keyEvent
 
 -- | fires when the specific button if clicked (down and up)

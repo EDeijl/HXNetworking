@@ -83,6 +83,8 @@ instance Draw Fill Mask where
     draw fill mask = Graphic $ \dst -> pixel dst >>= \c -> fillRect dst clip c >> return Nothing
         where
                 pixel dst = do pf <- SDL.surfaceFormat dst
+                               err <- SDL.getError
+                               mapM_ putStrLn $ fmap ("error in draw fill: " ++) err
                                p <- mapRGB pf (colorRed color) (colorGreen color) (colorBlue color)
                                (r,g,b) <- getRGB (Pixel p) pf
                                return $ Color r g b 255
@@ -95,6 +97,8 @@ instance Draw Text Mask where
                 blitText dst = do
                     --sz <- textSize (textFont ^$ text) (textMsg ^$ text)
                     txt <- renderTextBlended (textFont ^$ text) (textMsg ^$ text) (textColor ^$ text)
+                    err <- SDL.getError
+                    mapM_ putStrLn $ fmap ("error in draw: " ++) err
                     blitSurface txt clip dst offset
                     freeSurface txt
                     return offset
@@ -106,9 +110,11 @@ instance Draw Image Mask where
         where
             blitText dst = do
                 --sz <- textSize (textFont ^$ text) (textMsg ^$ text)
+                err <- SDL.getError
+                mapM_ putStrLn $ fmap ("error in draw image: " ++) err
                 is<-loadBMP $ imagePath ^$ img
-                blitSurface is clip dst offset
                 freeSurface is
+                blitSurface is clip dst offset
                 return offset
             clip = maskClip ^$ mask
             offset = Just Rect { rectX = maskX ^$ mask, rectY = maskY ^$ mask, rectW = 0, rectH = 0 }
