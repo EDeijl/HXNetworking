@@ -3,7 +3,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 import qualified Graphics.UI.SDL              as SDL
-import           Graphics.UI.SDL.Surface      as SDL
 import qualified Graphics.UI.SDL.TTF          as TTF
 import qualified Graphics.UI.SDL.TTF.Types    as TTF
 
@@ -11,17 +10,15 @@ import           Reactive.Banana
 import           Reactive.Banana.SDL
 import           Reactive.Banana.SDL.Graphics
 
-import           Data.Char
-import           Data.Maybe
 import qualified Data.Map                     as M
+import           Data.Maybe
 import           Data.Word
 import           System.FilePath
 import           System.Random
 
-import           Control.Monad                (void)
 import           Control.Monad.IO.Class       (liftIO)
 import           Paths_HXNetworking
-import           Reactive.Banana.Frameworks   (Frameworks, actuate, showNetwork)
+import           Reactive.Banana.Frameworks   (Frameworks, actuate)
 
 screenWidth, screenHeight :: Int
 screenWidth = 380
@@ -57,34 +54,34 @@ initGraphics =
      return $ GraphicsData realFont maybeSurface window
 
 setupNetwork :: Frameworks t => SDLEventSource -> GraphicsData -> Moment t ()
-setupNetwork es gd= do
+setupNetwork es gd = do
   r <- liftIO getStdGen
   eTickDiff <- tickDiffEvent es
   esdl <- sdlEvent es
-  let gsInitial :: GameState
+  let
+      gsInitial :: GameState
       gsInitial = GameState 0 100 2000 M.empty r 0 0 lives
       startGraphic :: Graphic
-      startGraphic = draw (Fill (SDL.Rect 0 0 width height) black) (Mask Nothing 0 0)
+      --startGraphic = draw (Fill (SDL.Rect 0 0 width height) black) (Mask Nothing 0 0)
+      startGraphic = draw (Image "image.bmp") (Mask Nothing 0 0)
       bScreen :: Behavior t Screen
       bScreen = pure $ fromJust (gd_mainSurface gd)
       eGSChange = (updateGS <$> eTickDiff) `union` (updateGSOnKey <$> keyDownEvent esdl)
       bGameState =accumB gsInitial eGSChange
-      livesG GameState{gs_lives}=draw (Text ("Lives:" ++ show gs_lives ++ "/" ++ show lives) (gd_font gd) red) (Mask Nothing 0 0)
-      -- | draw score
-      scoreG GameState{gs_score}=draw (Text ("Score:" ++ show gs_score) (gd_font gd) red) (Mask Nothing (halfW+1) 0)
-      -- | draw a character
-      charG (c,(x,y))= draw (Text [c] (gd_font gd) white) (Mask Nothing x y)
-      -- | draw characters
-      charsG GameState{gs_shown}=let
-              chars=map charG (M.assocs gs_shown)
-              in (Graphic $ \surface ->mapM_ (\(Graphic f)->void $ f surface) chars >> return Nothing)
-      -- | game over
-      gameOverG GameState{gs_score}=draw (Text "Game Over!" (gd_font gd) red) (Mask Nothing (halfW-40) (halfH-20))
-                                    `over`
-                                    draw (Text ("Score:" ++ show gs_score) (gd_font gd) red) (Mask Nothing (halfW-40) (halfH+10))
-      bG= (\g->if gs_lives g > 0
-                  then scoreG g  `over` livesG g `over` charsG g `over` startGraphic
-                  else gameOverG g `over` startGraphic) <$> bGameState
+      --livesG GameState{gs_lives}=draw (Text ("Lives:" ++ show gs_lives ++ "/" ++ show lives) (gd_font gd) red) (Mask Nothing 0 0)
+      ---- | draw score
+      --scoreG GameState{gs_score}=draw (Text ("Score:" ++ show gs_score) (gd_font gd) red) (Mask Nothing (halfW+1) 0)
+      ---- | draw a character
+      --charG (c,(x,y))= draw (Text [c] (gd_font gd) white) (Mask Nothing x y)
+      ---- | draw characters
+      --charsG GameState{gs_shown}=let
+                --chars=map charG (M.assocs gs_shown)
+                --in (Graphic $ \surface ->mapM_ (\(Graphic f)->void $ f surface) chars >> return Nothing)
+      ---- | game over
+      --gameOverG GameState{gs_score}=draw (Text "Game Over!" (gd_font gd) red) (Mask Nothing (halfW-40) (halfH-20))
+                                      --`over`
+                                      --draw (Text ("Score:" ++ show gs_score) (gd_font gd) red) (Mask Nothing (halfW-40) (halfH+10))
+      bG= (\g-> startGraphic) <$> bGameState
   renderGraph bG bScreen (gd_window gd)
   return ()
 
