@@ -1,23 +1,30 @@
-{-# LANGUAGE OverloadedStrings #-}
-module IOSMain where
-import qualified Graphics.UI.SDL           as SDL
-import           HXNetworking
-import           System.Exit
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+module Main where
 
-screenWidth, screenHeight :: Int
-screenWidth = 380
-screenHeight = 480
+import           Control.Concurrent
+import           Control.Monad
+import           Events
+import qualified Graphics.UI.SDL            as SDL
+import           Reactive
+import           Reactive.Banana
+import           Reactive.Banana.Frameworks
 
+windowWidth, windowHeight :: Int
+windowWidth = 640
+windowHeight = 480
 foreign export ccall "haskell_main" main :: IO ()
-main :: IO ()
-main = SDL.withInit [SDL.InitVideo] $ do
-     window <- SDL.createWindow "test" (SDL.Position 0 0) (SDL.Size screenWidth screenHeight) [SDL.WindowShown]
-     glContext <- SDL.glCreateContext window
-     renderer <- SDL.createRenderer window (SDL.Device (-1)) []
-     let loop = do
-                 event <- SDL.waitEvent
-                 case fmap SDL.eventData event of
-                   Just SDL.Quit -> exitSuccess
-                   _ -> print event >> render window renderer glContext
-                 loop
-     loop
+main = do
+  SDL.init [SDL.InitVideo]
+  window <- SDL.createWindow "HXNetworking" (SDL.Position 0 0) (SDL.Size windowWidth windowHeight) []
+  glContext <- SDL.glCreateContext window
+  renderer <- SDL.createRenderer window (SDL.Device (-1)) []
+  (frameAddHandler, fireFrame) <- newAddHandler
+  (eventAddHandler, fireEvent) <- newAddHandler
+  network <- compile (makeNetwork window renderer glContext frameAddHandler eventAddHandler)
+  actuate network
+
+  forkIO . forever $ do
+    fireFrame ()
+    threadDelay 1000000
+  eventLoop fireEvent

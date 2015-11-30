@@ -8,7 +8,8 @@ render window renderer context = do
         print window
         r <- randomRIO (0,255)
         g <- randomRIO (0,255)
-        b <- randomRIO (0,255)
+        b <- randomRIO 
+               (0,255)
         SDL.setRenderDrawColor renderer r g b 255
         SDL.renderClear renderer
         SDL.renderPresent renderer
