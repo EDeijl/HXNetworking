@@ -15,6 +15,7 @@ cabal.sandbox.config
 *.aux
 *.hp
 src/iOSMain.a
+src/Main.a
 # Xcode
 #
 # gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore

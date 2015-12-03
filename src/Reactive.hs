@@ -7,8 +7,8 @@ import           Reactive.Banana.Frameworks
 import           Types
 
 -- create the FRP network
-makeNetwork :: forall t. Frameworks t => SDL.Window -> SDL.Renderer -> SDL.GLContext -> AddHandler () -> AddHandler InputEvent -> Moment t ()
-makeNetwork window renderer glContext frameAddHandler eventAddHandler = do
+makeNetwork :: forall t. Frameworks t => SDL.Window -> SDL.Renderer -> AddHandler () -> AddHandler InputEvent -> Moment t ()
+makeNetwork window renderer frameAddHandler eventAddHandler = do
   frames <- fromAddHandler frameAddHandler
   events <- fromAddHandler eventAddHandler
 
@@ -19,7 +19,7 @@ makeNetwork window renderer glContext frameAddHandler eventAddHandler = do
           f UpPressed = paddleUp
           f DownPressed = paddleDown
   epaddle <- changes bpaddle
-  reactimate' $ fmap (renderPaddle window renderer glContext) <$> epaddle
+  reactimate' $ fmap (renderPaddle window renderer ) <$> epaddle
 
 -- | create an initial paddle at location and with size
 initPaddle :: Paddle
@@ -34,11 +34,11 @@ paddleUp :: Paddle -> Paddle
 paddleUp (SDL.Rect x y w h) = SDL.Rect x (y - 30) w h
 
 -- | render the paddle
-renderPaddle :: SDL.Window -> SDL.Renderer -> SDL.GLContext -> Paddle -> IO ()
-renderPaddle window renderer context p = do
+renderPaddle :: SDL.Window -> SDL.Renderer -> Paddle -> IO ()
+renderPaddle window renderer p = do
+  print window
   SDL.setRenderDrawColor renderer 255 255 255 255
   SDL.renderClear renderer
-  SDL.glSwapWindow window
   SDL.setRenderDrawColor renderer 0 0 255 255
   SDL.renderFillRect renderer p
   SDL.renderPresent renderer
