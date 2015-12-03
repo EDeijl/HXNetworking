@@ -12,6 +12,8 @@
 		28FD15000DC6FC520079059D /* OpenGLES.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 28FD14FF0DC6FC520079059D /* OpenGLES.framework */; };
 		28FD15080DC6FC5B0079059D /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 28FD15070DC6FC5B0079059D /* QuartzCore.framework */; };
 		7A923FF01C1039690030293E /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 7A923FEF1C1039690030293E /* Default-568h@2x.png */; };
+		7A923FF31C1049AA0030293E /* libHXNetworking-arm.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7A923FF21C1049AA0030293E /* libHXNetworking-arm.a */; };
+		7A923FF51C1049F30030293E /* HaskelliOS.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 7A923FF41C1049F30030293E /* HaskelliOS.xcconfig */; };
 		7AC9503E1BF4A4EA002EA7EB /* doxyfile in Resources */ = {isa = PBXBuildFile; fileRef = 7AC94FF21BF4A4EA002EA7EB /* doxyfile */; };
 		7AC9503F1BF4A4EA002EA7EB /* SDL_config.h.cmake in Resources */ = {isa = PBXBuildFile; fileRef = 7AC950031BF4A4EA002EA7EB /* SDL_config.h.cmake */; };
 		7AC950401BF4A4EA002EA7EB /* SDL_config.h.in in Resources */ = {isa = PBXBuildFile; fileRef = 7AC950041BF4A4EA002EA7EB /* SDL_config.h.in */; };
@@ -33,6 +35,9 @@
 		28FD14FF0DC6FC520079059D /* OpenGLES.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGLES.framework; path = System/Library/Frameworks/OpenGLES.framework; sourceTree = SDKROOT; };
 		28FD15070DC6FC5B0079059D /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		7A923FEF1C1039690030293E /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
+		7A923FF21C1049AA0030293E /* libHXNetworking-arm.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libHXNetworking-arm.a"; path = "arm/libHXNetworking-arm.a"; sourceTree = "<group>"; };
+		7A923FF41C1049F30030293E /* HaskelliOS.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = HaskelliOS.xcconfig; sourceTree = "<group>"; };
+		7A923FF61C104A880030293E /* Main_stub.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Main_stub.h; sourceTree = "<group>"; };
 		7AC94F9F1BF4A478002EA7EB /* begin_code.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = begin_code.h; sourceTree = "<group>"; };
 		7AC94FA01BF4A478002EA7EB /* close_code.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = close_code.h; sourceTree = "<group>"; };
 		7AC94FA11BF4A478002EA7EB /* doxyfile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = doxyfile; sourceTree = "<group>"; };
@@ -205,6 +210,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7A923FF31C1049AA0030293E /* libHXNetworking-arm.a in Frameworks */,
 				7AEC199D1C10371A002CE4FB /* libSDL2-arm.a in Frameworks */,
 				7AEC199C1C10371A002CE4FB /* libSDL2-aarch64.a in Frameworks */,
 				7AEC199E1C10371A002CE4FB /* libSDL2-i386.a in Frameworks */,
@@ -414,6 +420,8 @@
 		29B97314FDCFA39411CA2CEA /* CustomTemplate */ = {
 			isa = PBXGroup;
 			children = (
+				7A923FF41C1049F30030293E /* HaskelliOS.xcconfig */,
+				7A923FF11C10498F0030293E /* lib */,
 				7A923FEF1C1039690030293E /* Default-568h@2x.png */,
 				29B97315FDCFA39411CA2CEA /* Sources */,
 				29B97317FDCFA39411CA2CEA /* Resources */,
@@ -454,6 +462,15 @@
 				1D30AB110D05D00D00671497 /* Foundation.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		7A923FF11C10498F0030293E /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				7A923FF61C104A880030293E /* Main_stub.h */,
+				7A923FF21C1049AA0030293E /* libHXNetworking-arm.a */,
+			);
+			path = lib;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -514,6 +531,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7AC9503F1BF4A4EA002EA7EB /* SDL_config.h.cmake in Resources */,
+				7A923FF51C1049F30030293E /* HaskelliOS.xcconfig in Resources */,
 				FD77A07D0E26BD8C00F39101 /* Icon.png in Resources */,
 				7AC950401BF4A4EA002EA7EB /* SDL_config.h.in in Resources */,
 				FD77A07F0E26BDA900F39101 /* Default.png in Resources */,
@@ -552,6 +570,7 @@
 					"$(inherited)",
 					"\"$(SRCROOT)/SDL/lib\"",
 					"$(PROJECT_DIR)/SDL/lib",
+					"$(PROJECT_DIR)/lib/arm",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.sdltest;
 				PRODUCT_NAME = "___PROJECTNAME___";
@@ -573,6 +592,7 @@
 					"$(inherited)",
 					"\"$(SRCROOT)/SDL/lib\"",
 					"$(PROJECT_DIR)/SDL/lib",
+					"$(PROJECT_DIR)/lib/arm",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.sdltest;
 				PRODUCT_NAME = "___PROJECTNAME___";
@@ -582,6 +602,7 @@
 		};
 		C01FCF4F08A954540054247B /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7A923FF41C1049F30030293E /* HaskelliOS.xcconfig */;
 			buildSettings = {
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				ENABLE_TESTABILITY = YES;
@@ -598,6 +619,7 @@
 		};
 		C01FCF5008A954540054247B /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7A923FF41C1049F30030293E /* HaskelliOS.xcconfig */;
 			buildSettings = {
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				GCC_C_LANGUAGE_STANDARD = c99;
