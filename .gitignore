@@ -102,6 +102,5 @@ platforms/android/LICENSE
 platforms/android/libs
 
 #XCODE lib dir
-platforms/ios/HXNetworking/HXNetworking/lib
-platforms/ios/HXNetworking/SDL
+platforms/ios/HXNetworking/lib
 platforms/ios/HXNetworking/HaskelliOS.xcconfig
