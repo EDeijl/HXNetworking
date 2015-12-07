@@ -43,13 +43,13 @@ main = do
                  foldMap (\case
                              Quit -> (Any True, mempty)
                              e -> case e of
-                                    TouchFinger {} -> mempty 
-                                    _ -> (mempty, Last$ Just e)) events
+                                    TouchFinger {} -> mempty
+                                    _ -> (mempty, Last $ Just e)) events
            case event of
-             Just ev ->print ev >> fireEvent ev
+             Just ev -> print ev >> fireEvent ev
              _ -> return ()
            fireFrame ()
-           unless quit  loop
+           unless quit loop
   loop
 
 rectAtPosition :: (Int, Int) -> Rect -> Rect
@@ -69,7 +69,6 @@ initRect = Rect 100 100 100 100
 render :: Window -> Renderer -> Rect -> IO ()
 render window renderer rect = do
   print window
-  print rect
   setRenderDrawColor renderer 255 255 255 255
   renderClear renderer
   setRenderDrawColor renderer 255 0 0 255
@@ -87,13 +86,18 @@ makeNetwork window renderer g frameAddHandler eventAddHandler = do
 
 handleSDLEvent :: EventData -> Rect -> Rect
 handleSDLEvent event rect = case event of
-                              MouseMotion _ _ _ pos _ _ -> rectAtPosition (positionX pos, positionY pos) rect
+                              MouseMotion _ _ _ pos _ _ -> if  touchWithinRect (positionX pos, positionY pos) rect
+                                                           then rectAtPosition (positionX pos, positionY pos) rect
+                                                           else rect
                               _ -> rect
 
 
+touchWithinRect :: (Int, Int) -> Rect -> Bool
+touchWithinRect (x, y) rect = x > rectX rect && x < (rectX rect + rectW rect) &&
+                              y > rectY rect && y < (rectY rect + rectH rect)
 
 inputCoordsToScreenCoords :: (CFloat, CFloat) -> (Int, Int)
 inputCoordsToScreenCoords (x, y) = (round (fromIntegral screenWidth * x), round (fromIntegral screenHeight * y))
+
 screenCoordsToInputCoords :: (Int, Int) -> (Float, Float)
 screenCoordsToInputCoords (x, y) = (fromIntegral x/ fromIntegral screenWidth , fromIntegral y/ fromIntegral screenWidth)
-
