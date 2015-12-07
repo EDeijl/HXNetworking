@@ -31,12 +31,12 @@ main = do
            e <- SDL.waitEvent
            case fmap SDL.eventData e of
              Just Quit -> SDL.quit
-             Just ev -> print ev >> fireEvent ev >> loop
-             _ -> loop
+             Just ev -> fireEvent ev >> loop
   loop
 
 rectAtPosition :: (Int, Int) -> Rect -> Rect
-rectAtPosition (x, y) rect = Rect x  y (rectW rect) (rectH rect)
+rectAtPosition (x, y) rect = Rect (x - (fromIntegral (rectW rect) `div` 2)) (y - (fromIntegral (rectH rect) `div` 2)) (rectW rect) (rectH rect)
+
 randomRect :: StdGen -> Rect
 randomRect gen =
   Rect x y w h
@@ -52,7 +52,7 @@ render :: Window -> Renderer -> Rect -> IO ()
 render window renderer rect = do
   print window
   print rect
-  setRenderDrawColor renderer 0 0 0 255
+  setRenderDrawColor renderer 255 255 255 255
   renderClear renderer
   setRenderDrawColor renderer 255 0 0 255
   renderFillRect renderer rect

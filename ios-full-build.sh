@@ -29,10 +29,10 @@ echo Copying libraries
 echo
 
 for file in $(find ./dist/ -name *_stub.h); do
-    mv "$file" $XCODE_PROJECT_BUILD_DIR/SDL/lib
+    mv "$file" $XCODE_PROJECT_BUILD_DIR/lib
 done
 
-mv HXNetworkingStaticLib.a $XCODE_PROJECT_BUILD_DIR/SDL/lib/
+mv HXNetworkingStaticLib.a $XCODE_PROJECT_BUILD_DIR/lib/
 
 echo
 echo Copying config file
