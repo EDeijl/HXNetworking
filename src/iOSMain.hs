@@ -1,12 +1,18 @@
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import           Control.Concurrent
-import           Control.Monad
+import           Control.Monad              hiding (mapM_)
+import           CUtil
+import           Data.Foldable
+import           Data.Maybe
+import           Data.Monoid
 import           Events
+
 import           Foreign.C.Types
 import           Graphics.UI.SDL            as SDL
+import           Prelude                    hiding (any, mapM_)
 import           Reactive.Banana
 import           Reactive.Banana.Frameworks
 import           System.Random
@@ -27,11 +33,23 @@ main = do
   actuate network
 
   let loop = do
+           let collectEvents = do
+                 e <- SDL.pollEvent
+                 case e of
+                   Nothing -> return []
+                   Just e' -> (e' :) <$> collectEvents
+           events <- map SDL.eventData <$> collectEvents
+           let (Any quit,Last event) =  -- only act on the last event in this frame and ignore all TouchFinger events
+                 foldMap (\case
+                             Quit -> (Any True, mempty)
+                             e -> case e of
+                                    TouchFinger {} -> mempty 
+                                    _ -> (mempty, Last$ Just e)) events
+           case event of
+             Just ev ->print ev >> fireEvent ev
+             _ -> return ()
            fireFrame ()
-           e <- SDL.waitEvent
-           case fmap SDL.eventData e of
-             Just Quit -> SDL.quit
-             Just ev -> fireEvent ev >> loop
+           unless quit  loop
   loop
 
 rectAtPosition :: (Int, Int) -> Rect -> Rect
@@ -70,13 +88,12 @@ makeNetwork window renderer g frameAddHandler eventAddHandler = do
 handleSDLEvent :: EventData -> Rect -> Rect
 handleSDLEvent event rect = case event of
                               MouseMotion _ _ _ pos _ _ -> rectAtPosition (positionX pos, positionY pos) rect
-                              --TouchFinger _ _ _ _ x y _ _ _ -> rectAtPosition (round (x * 1000 / 65535 * fromIntegral screenWidth) , round (y * 1000 / 65535 * fromIntegral screenHeight) ) rect
                               _ -> rect
 
 
 
 inputCoordsToScreenCoords :: (CFloat, CFloat) -> (Int, Int)
 inputCoordsToScreenCoords (x, y) = (round (fromIntegral screenWidth * x), round (fromIntegral screenHeight * y))
-
 screenCoordsToInputCoords :: (Int, Int) -> (Float, Float)
 screenCoordsToInputCoords (x, y) = (fromIntegral x/ fromIntegral screenWidth , fromIntegral y/ fromIntegral screenWidth)
+
