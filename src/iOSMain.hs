@@ -4,11 +4,9 @@
 module Main where
 
 import           Control.Monad              hiding (mapM_)
-import           CUtil
 import           Data.Foldable
 import           Data.Maybe
 import           Data.Monoid
-import           Events
 
 import           Foreign.C.Types
 import           Graphics.UI.SDL            as SDL
@@ -16,7 +14,6 @@ import           Prelude                    hiding (any, mapM_)
 import           Reactive.Banana
 import           Reactive.Banana.Frameworks
 import           System.Random
-import           Types
 
 screenWidth, screenHeight :: Int
 screenWidth = 640
