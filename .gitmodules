@@ -1,0 +1,3 @@
+[submodule "HXNetworking-xcode"]
+	path = platforms/ios/HXNetworking
+	url = https://github.com/edeijl/HXNetworking-xcode
