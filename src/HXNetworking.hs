@@ -1,5 +1,5 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module HXNetworking where
 import           Control.Monad              hiding (mapM_)
@@ -7,20 +7,32 @@ import           Data.Foldable
 import           Data.Maybe
 import           Data.Monoid
 
+import           Data.Function
 import           Foreign.C.Types
 import           Graphics.UI.SDL            as SDL
+import           Graphics.UI.SDL.Image      as Image
+import           Paths_HXNetworking
+import qualified Physics.Hipmunk            as H
 import           Prelude                    hiding (any, mapM_)
 import           Reactive.Banana
 import           Reactive.Banana.Frameworks
 import           System.Random
 
+-- | drawable object with a physics object attached to it.
+data Object = Object { texture       :: Texture
+                     , physicsCircle :: H.Body
+                     , position      :: Position }
+
 screenWidth, screenHeight :: Int
 screenWidth = 640
 screenHeight = 480
+
 moduleMain:: IO ()
 moduleMain = do
   SDL.init [SDL.InitVideo]
-  window <- SDL.createWindow "HXNetworking" (SDL.Position 0 0) (SDL.Size screenWidth screenHeight) [WindowFullscreenDesktop]
+  Image.init [initPng]
+  H.initChipmunk
+  window <- SDL.createWindow "HXNetworking" (SDL.Position 0 0) (SDL.Size screenWidth screenHeight) []
   renderer <- SDL.createRenderer window (SDL.Device (-1)) []
   g <- newStdGen
   (frameAddHandler, fireFrame) <- newAddHandler
@@ -45,6 +57,7 @@ moduleMain = do
              Just ev -> print ev >> fireEvent ev
              _ -> return ()
            fireFrame ()
+           renderPresent renderer
            unless quit loop
   loop
 
@@ -62,23 +75,30 @@ randomRect gen =
 initRect :: Rect
 initRect = Rect 100 100 100 100
 
+initObj :: Texture -> H.Body -> Position-> Object
+initObj = Object
+
 render :: Window -> Renderer -> Rect -> IO ()
 render window renderer rect = do
-  print window
   setRenderDrawColor renderer 255 255 255 255
   renderClear renderer
+  print window
   setRenderDrawColor renderer 255 0 0 255
   renderFillRect renderer rect
-  renderPresent renderer
 
 makeNetwork :: forall t. Frameworks t => SDL.Window -> SDL.Renderer -> StdGen -> AddHandler () -> AddHandler EventData -> Moment t ()
 makeNetwork window renderer g frameAddHandler eventAddHandler = do
   frames <- fromAddHandler frameAddHandler
   events <- fromAddHandler eventAddHandler
+  image <- liftIO $ HXNetworking.loadTexture "sprites.png" renderer
+  body <- liftIO $ H.newBody 10 0
+  let bImg :: Behavior t Object
+      bImg = pure (initObj image body (Position 50 50))
   let bRect :: Behavior t Rect
       bRect = accumB initRect (handleSDLEvent <$> events)
   eRect <- changes bRect
-  reactimate' $ fmap (render window renderer ) <$> eRect
+  reactimate' $ fmap (render window renderer) <$> eRect
+  reactimate' $ fmap (renderTexture image renderer (Position 50 50) Nothing)
 
 handleSDLEvent :: EventData -> Rect -> Rect
 handleSDLEvent event rect = case event of
@@ -86,7 +106,6 @@ handleSDLEvent event rect = case event of
                                                            then rectAtPosition (positionX pos, positionY pos) rect
                                                            else rect
                               _ -> rect
-
 
 touchWithinRect :: (Int, Int) -> Rect -> Bool
 touchWithinRect (x, y) rect = x > rectX rect && x < (rectX rect + rectW rect) &&
@@ -97,3 +116,16 @@ inputCoordsToScreenCoords (x, y) = (round (fromIntegral screenWidth * x), round 
 
 screenCoordsToInputCoords :: (Int, Int) -> (Float, Float)
 screenCoordsToInputCoords (x, y) = (fromIntegral x/ fromIntegral screenWidth , fromIntegral y/ fromIntegral screenWidth)
+
+loadTexture :: FilePath -> Renderer -> IO Texture
+loadTexture path renderer = createTextureFromSurface renderer =<< load path
+
+
+renderTexture :: Texture -> Renderer -> Position -> Maybe Rect -> IO ()
+renderTexture texture renderer (Position x y) mbClip = do
+  dst <- case mbClip of
+    Nothing -> do
+      Size w h <- queryTexture texture
+      return $ Rect x y w h
+    Just (Rect _x _y w h) -> return $ Rect x y w h
+  renderCopy renderer texture mbClip (Just dst)
