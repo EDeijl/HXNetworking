@@ -61,16 +61,6 @@ moduleMain = do
            unless quit loop
   loop
 
-rectAtPosition :: (Int, Int) -> Rect -> Rect
-rectAtPosition (x, y) rect = Rect (x - (fromIntegral (rectW rect) `div` 2)) (y - (fromIntegral (rectH rect) `div` 2)) (rectW rect) (rectH rect)
-
-randomRect :: StdGen -> Rect
-randomRect gen =
-  Rect x y w h
-  where w = fst $ randomR (64, 128) gen
-        h = fst $ randomR (64, 128) gen
-        x = fst $ randomR (0, screenWidth) gen
-        y = fst $ randomR (0, screenHeight) gen
 
 initRect :: Rect
 initRect = Rect 100 100 100 100
@@ -93,12 +83,18 @@ makeNetwork window renderer g frameAddHandler eventAddHandler = do
   image <- liftIO $ HXNetworking.loadTexture "sprites.png" renderer
   body <- liftIO $ H.newBody 10 0
   let bImg :: Behavior t Object
-      bImg = pure (initObj image body (Position 50 50))
+      bImg = accumB (initObj image body (Position 50 50)) (handleSDLEvent' <$> events)
   let bRect :: Behavior t Rect
       bRect = accumB initRect (handleSDLEvent <$> events)
+  eImg <- changes bImg
   eRect <- changes bRect
   reactimate' $ fmap (render window renderer) <$> eRect
-  reactimate' $ fmap (renderTexture image renderer (Position 50 50) Nothing)
+  reactimate' $ fmap (renderObject renderer) <$> eImg
+
+handleSDLEvent' :: EventData -> Object -> Object
+handleSDLEvent' event object = case event of
+                                 MouseMotion _ _ _ pos _ _ -> Object (texture object) (physicsCircle object) pos
+                                 _ -> object
 
 handleSDLEvent :: EventData -> Rect -> Rect
 handleSDLEvent event rect = case event of
@@ -111,6 +107,17 @@ touchWithinRect :: (Int, Int) -> Rect -> Bool
 touchWithinRect (x, y) rect = x > rectX rect && x < (rectX rect + rectW rect) &&
                               y > rectY rect && y < (rectY rect + rectH rect)
 
+rectAtPosition :: (Int, Int) -> Rect -> Rect
+rectAtPosition (x, y) rect = Rect (x - (fromIntegral (rectW rect) `div` 2)) (y - (fromIntegral (rectH rect) `div` 2)) (rectW rect) (rectH rect)
+
+randomRect :: StdGen -> Rect
+randomRect gen =
+  Rect x y w h
+  where w = fst $ randomR (64, 128) gen
+        h = fst $ randomR (64, 128) gen
+        x = fst $ randomR (0, screenWidth) gen
+        y = fst $ randomR (0, screenHeight) gen
+
 inputCoordsToScreenCoords :: (CFloat, CFloat) -> (Int, Int)
 inputCoordsToScreenCoords (x, y) = (round (fromIntegral screenWidth * x), round (fromIntegral screenHeight * y))
 
@@ -120,6 +127,9 @@ screenCoordsToInputCoords (x, y) = (fromIntegral x/ fromIntegral screenWidth , f
 loadTexture :: FilePath -> Renderer -> IO Texture
 loadTexture path renderer = createTextureFromSurface renderer =<< load path
 
+
+renderObject :: Renderer -> Object -> IO ()
+renderObject renderer object = renderTexture (texture object) renderer (position object) Nothing
 
 renderTexture :: Texture -> Renderer -> Position -> Maybe Rect -> IO ()
 renderTexture texture renderer (Position x y) mbClip = do
