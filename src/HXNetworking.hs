@@ -11,16 +11,17 @@ import           Data.Function
 import           Foreign.C.Types
 import           Graphics.UI.SDL            as SDL
 import           Graphics.UI.SDL.Image      as Image
+import           Graphics.UI.SDL.Surface
 import           Paths_HXNetworking
-import qualified Physics.Hipmunk            as H
 import           Prelude                    hiding (any, mapM_)
 import           Reactive.Banana
 import           Reactive.Banana.Frameworks
 import           System.Random
+import           Utils
+import           Types
 
 -- | drawable object with a physics object attached to it.
 data Object = Object { texture       :: Texture
-                     , physicsCircle :: H.Body
                      , position      :: Position }
 
 screenWidth, screenHeight :: Int
@@ -31,13 +32,11 @@ moduleMain:: IO ()
 moduleMain = do
   SDL.init [SDL.InitVideo]
   Image.init [initPng]
-  H.initChipmunk
   window <- SDL.createWindow "HXNetworking" (SDL.Position 0 0) (SDL.Size screenWidth screenHeight) []
-  renderer <- SDL.createRenderer window (SDL.Device (-1)) []
-  g <- newStdGen
+  renderer <- SDL.createRenderer window (SDL.Device (-1)) [SDL.Software]
   (frameAddHandler, fireFrame) <- newAddHandler
   (eventAddHandler, fireEvent) <- newAddHandler
-  network <- compile (makeNetwork window renderer g frameAddHandler eventAddHandler)
+  network <- compile (makeNetwork window renderer frameAddHandler eventAddHandler)
   actuate network
 
   let loop = do
@@ -65,7 +64,7 @@ moduleMain = do
 initRect :: Rect
 initRect = Rect 100 100 100 100
 
-initObj :: Texture -> H.Body -> Position-> Object
+initObj :: Texture -> Position-> Object
 initObj = Object
 
 render :: Window -> Renderer -> Rect -> IO ()
@@ -76,24 +75,23 @@ render window renderer rect = do
   setRenderDrawColor renderer 255 0 0 255
   renderFillRect renderer rect
 
-makeNetwork :: forall t. Frameworks t => SDL.Window -> SDL.Renderer -> StdGen -> AddHandler () -> AddHandler EventData -> Moment t ()
-makeNetwork window renderer g frameAddHandler eventAddHandler = do
+makeNetwork :: forall t. Frameworks t => SDL.Window -> SDL.Renderer -> AddHandler () -> AddHandler EventData -> Moment t ()
+makeNetwork window renderer frameAddHandler eventAddHandler = do
   frames <- fromAddHandler frameAddHandler
   events <- fromAddHandler eventAddHandler
   image <- liftIO $ HXNetworking.loadTexture "sprites.png" renderer
-  body <- liftIO $ H.newBody 10 0
-  let bImg :: Behavior t Object
-      bImg = accumB (initObj image body (Position 50 50)) (handleSDLEvent' <$> events)
-  let bRect :: Behavior t Rect
-      bRect = accumB initRect (handleSDLEvent <$> events)
-  eImg <- changes bImg
-  eRect <- changes bRect
-  reactimate' $ fmap (render window renderer) <$> eRect
-  reactimate' $ fmap (renderObject renderer) <$> eImg
+  let bImg1 :: Behavior t Object
+      bImg1 = accumB (initObj image (Position 50 50)) (handleSDLEvent' <$> events)
+  let bImg2 :: Behavior t Object
+      bImg2 = accumB (initObj image (Position 200 200)) (handleSDLEvent' <$> events)
+  eImg1 <- changes bImg1
+  eImg2 <- changes bImg1
+  reactimate' $ fmap (renderObject window renderer) <$> eImg1
+  reactimate' $ fmap (renderObject window renderer) <$> eImg2
 
 handleSDLEvent' :: EventData -> Object -> Object
 handleSDLEvent' event object = case event of
-                                 MouseMotion _ _ _ pos _ _ -> Object (texture object) (physicsCircle object) pos
+                                 MouseMotion _ _ _ pos _ _ -> Object (texture object) pos
                                  _ -> object
 
 handleSDLEvent :: EventData -> Rect -> Rect
@@ -125,17 +123,25 @@ screenCoordsToInputCoords :: (Int, Int) -> (Float, Float)
 screenCoordsToInputCoords (x, y) = (fromIntegral x/ fromIntegral screenWidth , fromIntegral y/ fromIntegral screenWidth)
 
 loadTexture :: FilePath -> Renderer -> IO Texture
-loadTexture path renderer = createTextureFromSurface renderer =<< load path
+loadTexture path renderer = do
+  surface <- load path
+  texture <- createTextureFromSurface renderer surface
+  freeSurface surface
+  return texture
 
 
-renderObject :: Renderer -> Object -> IO ()
-renderObject renderer object = renderTexture (texture object) renderer (position object) Nothing
+renderObject ::Window -> Renderer -> Object -> IO ()
+renderObject window renderer object = do
+  setRenderDrawColor renderer 255 255 255 255 >> renderClear renderer
+  renderTexture (texture object) renderer (position object) Nothing
+  print window
 
 renderTexture :: Texture -> Renderer -> Position -> Maybe Rect -> IO ()
 renderTexture texture renderer (Position x y) mbClip = do
   dst <- case mbClip of
     Nothing -> do
       Size w h <- queryTexture texture
-      return $ Rect x y w h
-    Just (Rect _x _y w h) -> return $ Rect x y w h
+      return $ Rect (x - (w `div` 2)) (y - (h `div` 2)) w h
+    Just (Rect _x _y w h) -> return $ Rect (x - (w `div` 2)) (y - (h `div` 2)) w h
+  print dst
   renderCopy renderer texture mbClip (Just dst)
