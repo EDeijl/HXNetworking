@@ -58,13 +58,19 @@ initGraphics = do
   renderer <- SDL.createRenderer window (SDL.Device (-1)) [SDL.Software]
   return $ GraphicsData window renderer
 
+-- | Render Rectangle
+renderRect :: GraphicsData -> FillRect -> IO ()
+renderRect gd fRect = do
+  setRenderDrawColor (renderer gd) r g b a
+  renderDrawRect (renderer gd) (rect fRect)
+  renderFillRect (renderer gd) (rect fRect)
+  where Color r g b a = color fRect
+
 
 -- | Render the rectangle
 render ::GraphicsData -> AppState -> IO ()
 render gd as= do
-  setRenderDrawColor (renderer gd) r g b a
-  renderDrawRect (renderer gd) (rect $ fRect as)
-  renderFillRect (renderer gd) (rect $ fRect as)
+  renderRect gd (fRect as)
   renderPresent (renderer gd)
   where Color r g b a = color $ fRect as
 
@@ -79,7 +85,10 @@ makeNetwork es gd= do
     asInitial :: AppState
     asInitial = AppState 0 r (FillRect (Rect 100 100 100 100) (Color 255 0 0 255))
     -- | app state update event
-    eASChange = (updateAS <$> eTickDiff) `union` (updateASOnKey <$> keyDownEvent esdl) `union` (updateASOnMouseOver <$> mouseButtonDownEvent esdl)
+    eASChangeKeys = (updateAS <$> eTickDiff) `union` (updateASOnKey <$> keyDownEvent esdl)
+    eASChangeMouse = updateASOnMouseButtonDown <$> mouseButtonDownEvent (mouseEventWithin (rect $ fRect asInitial) esdl)
+    eASChange = eASChangeKeys `union` eASChangeMouse
+
     -- | app state behavior
     bAppState = accumB asInitial eASChange
   -- | appState change event
@@ -101,12 +110,13 @@ updateAS :: Word32 -> AppState -> AppState
 updateAS _ as= as
 
 -- | update appstate on mouseButtonDown events
-updateASOnMouseButtonDown :: MouseButton -> AppState -> AppState
-updateASOnMouseButtonDown _ as = AppState s r''' (FillRect f' (Color r g b 255))
+updateASOnMouseButtonDown :: EventData -> AppState -> AppState
+updateASOnMouseButtonDown (MouseButton _ _ button state position) as@(AppState s asRand fRect) = AppState s r''' (FillRect f' (Color r g b 255))
   where (r, r')   = randomR (0, 255) asRand
         (g, r'')  = randomR (0, 255) r'
         (b, r''') = randomR (0, 255) r''
         f' = rect fRect
+
 
 loadTexture :: FilePath -> Renderer -> IO Texture
 loadTexture path renderer = do

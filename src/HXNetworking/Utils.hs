@@ -61,15 +61,15 @@ mouseEvent esdl = mouseMotion `union` mouseButtonEvent esdl
           _ -> False
 
 -- | event carrying the mouse event down
-mouseButtonDownEvent :: WrappedEvent t -> R.Event t SDL.MouseButton
+mouseButtonDownEvent :: WrappedEvent t -> R.Event t SDL.EventData
 mouseButtonDownEvent = filterJust . (isDown <$>) . spill . mouseEvent
-  where isDown (Event _ (MouseButton _ _ b Pressed _)) = Just b
+  where isDown (Event _ b@(MouseButton _ _ _ Pressed _)) = Just b
         isDown _ = Nothing
 
 -- | event carrying the mouse event up
-mouseButtonUpEvent :: WrappedEvent t -> R.Event t SDL.MouseButton
+mouseButtonUpEvent :: WrappedEvent t -> R.Event t SDL.EventData
 mouseButtonUpEvent = filterJust . (isDown <$>) . spill . mouseEvent
-  where isDown (Event _ (MouseButton _ _ b Released _)) = Just b
+  where isDown (Event _ b@(MouseButton _ _ _ Released _)) = Just b
         isDown _ = Nothing
 
 -- | mouse button event
