@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module HXNetworking where
@@ -7,7 +6,9 @@ import           Data.Foldable
 import           Data.Maybe
 import           Data.Monoid
 
+import           Data.Char
 import           Data.Function
+import           Data.Word
 import           Foreign.C.Types
 import           Graphics.UI.SDL            as SDL
 import           Graphics.UI.SDL.Image      as Image
@@ -16,13 +17,23 @@ import           Paths_HXNetworking
 import           Prelude                    hiding (any, mapM_)
 import           Reactive.Banana
 import           Reactive.Banana.Frameworks
+import           HXNetworking.SDL
 import           System.Random
-import           Utils
-import           Types
+import           HXNetworking.Types
+import           HXNetworking.Utils
 
--- | drawable object with a physics object attached to it.
-data Object = Object { texture       :: Texture
-                     , position      :: Position }
+-- | State of the application
+data AppState = AppState { asScore  :: Int
+                         , asRand   :: StdGen
+                         , fRect :: FillRect
+                         }
+
+-- | Type synonym for a list of Rects
+type Grid = [SDL.Rect]
+
+data FillRect = FillRect { rect  :: Rect
+                         , color :: Color }
+
 
 screenWidth, screenHeight :: Int
 screenWidth = 640
@@ -30,97 +41,72 @@ screenHeight = 480
 
 moduleMain:: IO ()
 moduleMain = do
+  -- SDL event source
+  sdlES <- getSDLEventSource
+  -- call initialization
+  gd <- liftIO initGraphics
+  network <- compile $ makeNetwork sdlES gd
+  actuate network
+  runSDLPump gd sdlES
+
+-- | SDL initialization
+initGraphics :: IO GraphicsData
+initGraphics = do
   SDL.init [SDL.InitVideo]
   Image.init [initPng]
-  window <- SDL.createWindow "HXNetworking" (SDL.Position 0 0) (SDL.Size screenWidth screenHeight) []
+  window <- SDL.createWindow "HXNetworking" (SDL.Position 0 0 )(SDL.Size screenWidth screenHeight) []
   renderer <- SDL.createRenderer window (SDL.Device (-1)) [SDL.Software]
-  (frameAddHandler, fireFrame) <- newAddHandler
-  (eventAddHandler, fireEvent) <- newAddHandler
-  network <- compile (makeNetwork window renderer frameAddHandler eventAddHandler)
-  actuate network
-
-  let loop = do
-           let collectEvents = do
-                 e <- SDL.pollEvent
-                 case e of
-                   Nothing -> return []
-                   Just e' -> (e' :) <$> collectEvents
-           events <- map SDL.eventData <$> collectEvents
-           let (Any quit,Last event) =  -- only act on the last event in this frame and ignore all TouchFinger events
-                 foldMap (\case
-                             Quit -> (Any True, mempty)
-                             e -> case e of
-                                    TouchFinger {} -> mempty
-                                    _ -> (mempty, Last $ Just e)) events
-           case event of
-             Just ev -> print ev >> fireEvent ev
-             _ -> return ()
-           fireFrame ()
-           renderPresent renderer
-           unless quit loop
-  loop
+  return $ GraphicsData window renderer
 
 
-initRect :: Rect
-initRect = Rect 100 100 100 100
+-- | Render the rectangle
+render ::GraphicsData -> AppState -> IO ()
+render gd as= do
+  setRenderDrawColor (renderer gd) r g b a
+  renderDrawRect (renderer gd) (rect $ fRect as)
+  renderFillRect (renderer gd) (rect $ fRect as)
+  renderPresent (renderer gd)
+  where Color r g b a = color $ fRect as
 
-initObj :: Texture -> Position-> Object
-initObj = Object
+-- | setup the FRP network
+makeNetwork :: forall t. Frameworks t => SDLEventSource -> GraphicsData -> Moment t ()
+makeNetwork es gd= do
+  r<- liftIO getStdGen
+  eTickDiff <- tickDiffEvent es
+  esdl <- sdlEvent es
+  let
+    -- | the initial state
+    asInitial :: AppState
+    asInitial = AppState 0 r (FillRect (Rect 100 100 100 100) (Color 255 0 0 255))
+    -- | app state update event
+    eASChange = (updateAS <$> eTickDiff) `union` (updateASOnKey <$> keyDownEvent esdl) `union` (updateASOnMouseOver <$> mouseButtonDownEvent esdl)
+    -- | app state behavior
+    bAppState = accumB asInitial eASChange
+  -- | appState change event
+  eApp <- changes bAppState
+  reactimate' $ fmap (render gd) <$> eApp
 
-render :: Window -> Renderer -> Rect -> IO ()
-render window renderer rect = do
-  setRenderDrawColor renderer 255 255 255 255
-  renderClear renderer
-  print window
-  setRenderDrawColor renderer 255 0 0 255
-  renderFillRect renderer rect
 
-makeNetwork :: forall t. Frameworks t => SDL.Window -> SDL.Renderer -> AddHandler () -> AddHandler EventData -> Moment t ()
-makeNetwork window renderer frameAddHandler eventAddHandler = do
-  frames <- fromAddHandler frameAddHandler
-  events <- fromAddHandler eventAddHandler
-  image <- liftIO $ HXNetworking.loadTexture "sprites.png" renderer
-  let bImg1 :: Behavior t Object
-      bImg1 = accumB (initObj image (Position 50 50)) (handleSDLEvent' <$> events)
-  let bImg2 :: Behavior t Object
-      bImg2 = accumB (initObj image (Position 200 200)) (handleSDLEvent' <$> events)
-  eImg1 <- changes bImg1
-  eImg2 <- changes bImg1
-  reactimate' $ fmap (renderObject window renderer) <$> eImg1
-  reactimate' $ fmap (renderObject window renderer) <$> eImg2
 
-handleSDLEvent' :: EventData -> Object -> Object
-handleSDLEvent' event object = case event of
-                                 MouseMotion _ _ _ pos _ _ -> Object (texture object) pos
-                                 _ -> object
+-- | update app state on key press
+updateASOnKey :: SDL.Keysym -> AppState -> AppState
+updateASOnKey k as@(AppState s asRand fRect) =  AppState s r''' (FillRect f' (Color r g b 255))
+  where (r, r')   = randomR (0, 255) asRand
+        (g, r'')  = randomR (0, 255) r'
+        (b, r''') = randomR (0, 255) r''
+        f' = rect fRect
 
-handleSDLEvent :: EventData -> Rect -> Rect
-handleSDLEvent event rect = case event of
-                              MouseMotion _ _ _ pos _ _ -> if  touchWithinRect (positionX pos, positionY pos) rect
-                                                           then rectAtPosition (positionX pos, positionY pos) rect
-                                                           else rect
-                              _ -> rect
+-- | update app state on tick
+updateAS :: Word32 -> AppState -> AppState
+updateAS _ as= as
 
-touchWithinRect :: (Int, Int) -> Rect -> Bool
-touchWithinRect (x, y) rect = x > rectX rect && x < (rectX rect + rectW rect) &&
-                              y > rectY rect && y < (rectY rect + rectH rect)
-
-rectAtPosition :: (Int, Int) -> Rect -> Rect
-rectAtPosition (x, y) rect = Rect (x - (fromIntegral (rectW rect) `div` 2)) (y - (fromIntegral (rectH rect) `div` 2)) (rectW rect) (rectH rect)
-
-randomRect :: StdGen -> Rect
-randomRect gen =
-  Rect x y w h
-  where w = fst $ randomR (64, 128) gen
-        h = fst $ randomR (64, 128) gen
-        x = fst $ randomR (0, screenWidth) gen
-        y = fst $ randomR (0, screenHeight) gen
-
-inputCoordsToScreenCoords :: (CFloat, CFloat) -> (Int, Int)
-inputCoordsToScreenCoords (x, y) = (round (fromIntegral screenWidth * x), round (fromIntegral screenHeight * y))
-
-screenCoordsToInputCoords :: (Int, Int) -> (Float, Float)
-screenCoordsToInputCoords (x, y) = (fromIntegral x/ fromIntegral screenWidth , fromIntegral y/ fromIntegral screenWidth)
+-- | update appstate on mouseButtonDown events
+updateASOnMouseButtonDown :: MouseButton -> AppState -> AppState
+updateASOnMouseButtonDown _ as = AppState s r''' (FillRect f' (Color r g b 255))
+  where (r, r')   = randomR (0, 255) asRand
+        (g, r'')  = randomR (0, 255) r'
+        (b, r''') = randomR (0, 255) r''
+        f' = rect fRect
 
 loadTexture :: FilePath -> Renderer -> IO Texture
 loadTexture path renderer = do
@@ -128,13 +114,6 @@ loadTexture path renderer = do
   texture <- createTextureFromSurface renderer surface
   freeSurface surface
   return texture
-
-
-renderObject ::Window -> Renderer -> Object -> IO ()
-renderObject window renderer object = do
-  setRenderDrawColor renderer 255 255 255 255 >> renderClear renderer
-  renderTexture (texture object) renderer (position object) Nothing
-  print window
 
 renderTexture :: Texture -> Renderer -> Position -> Maybe Rect -> IO ()
 renderTexture texture renderer (Position x y) mbClip = do

@@ -38,7 +38,12 @@ executable HXNetworking
   main-is:             Main.hs
   extra-libraries: SDL2
   Frameworks: AppKit, OpenGL
-  -- other-modules:       
+  other-modules:       HXNetworking
+                     , HXNetworking.Types
+                     , HXNetworking.Utils
+                     , HXNetworking.SDL
+                     , Paths_HXNetworking
+                     
   -- other-extensions:    
   build-depends:       SDL2 == 0.1.0
                      , base >=4.7 && < 5

@@ -1,4 +1,4 @@
-module Types where
+module HXNetworking.Types where
 
 import Reactive.Banana as R
 import Graphics.UI.SDL as SDL
@@ -14,3 +14,7 @@ type TickEvent t = R.Event t Word32
 -- | SDL Event Source
 data SDLEventSource = SDLEventSource { getSDLEvent :: EventSource [SDL.Event]
                                      , getTickEvent :: EventSource Word32 }
+
+data GraphicsData = GraphicsData { window   :: Window
+                                 , renderer :: Renderer
+                                 }

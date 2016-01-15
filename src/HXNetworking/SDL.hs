@@ -1,20 +1,23 @@
-module SDL where
+module HXNetworking.SDL where
 
 import           Control.Monad
 import           Data.Word
 import           Graphics.UI.SDL            as SDL
 import           Reactive.Banana            as R
 import           Reactive.Banana.Frameworks (newAddHandler)
-import           Types
-import           Utils
+import           HXNetworking.Types
+import           HXNetworking.Utils
 
 
 getSDLEventSource :: IO SDLEventSource
 getSDLEventSource = SDLEventSource <$> newAddHandler <*> newAddHandler
 
 -- | one step in the main event loop, returning False when it needs to stop
-mainSDLPump :: SDLEventSource -> IO Bool
-mainSDLPump es = do
+mainSDLPump :: GraphicsData -> SDLEventSource -> IO Bool
+mainSDLPump gd es = do
+  setRenderDrawColor (renderer gd) 255 255 255 255
+  renderClear (renderer gd)
+  print (window gd)
   let esdl = getSDLEvent es
       etick = getTickEvent es
   tick <- SDL.getTicks
@@ -37,18 +40,18 @@ collectEvents = do
     Just ev@_ -> liftM (liftM (ev:)) collectEvents
 
 -- | main event loop
-runSDLPump :: SDLEventSource -> IO ()
-runSDLPump es = whileM (mainSDLPump es)
+runSDLPump :: GraphicsData -> SDLEventSource -> IO ()
+runSDLPump gd es = whileM (mainSDLPump gd es)
 
 -- | main event loop, capped at n frames / second
-runCappedSDLPump :: Int -> SDLEventSource -> IO ()
-runCappedSDLPump rate es = do
+runCappedSDLPump :: Int -> GraphicsData -> SDLEventSource -> IO ()
+runCappedSDLPump rate gd es = do
   startTick <- SDL.getTicks
-  c <- mainSDLPump es
+  c <- mainSDLPump gd es
   endTick <- SDL.getTicks
   let ticks = fromIntegral (endTick - startTick)
       secsPerFrame = fromIntegral (1000 `div` rate)
   when (ticks < secsPerFrame) $
     delay $ secsPerFrame - ticks
-  when c $ runCappedSDLPump rate es
+  when c $ runCappedSDLPump rate gd es
 

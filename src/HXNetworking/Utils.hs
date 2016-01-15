@@ -1,10 +1,10 @@
-module Utils where
+module HXNetworking.Utils where
 import           Control.Monad              (liftM, when)
 import           Graphics.UI.SDL            as SDL
 import           Reactive.Banana            as R
 import           Reactive.Banana.Frameworks (AddHandler, Frameworks,
                                              fromAddHandler)
-import           Types
+import           HXNetworking.Types
 
 -- | run while the given computation returns True
 whileM :: IO Bool -> IO ()
@@ -60,6 +60,18 @@ mouseEvent esdl = mouseMotion `union` mouseButtonEvent esdl
           Event _  MouseMotion{} -> True
           _ -> False
 
+-- | event carrying the mouse event down
+mouseButtonDownEvent :: WrappedEvent t -> R.Event t SDL.MouseButton
+mouseButtonDownEvent = filterJust . (isDown <$>) . spill . mouseEvent
+  where isDown (Event _ (MouseButton _ _ b Pressed _)) = Just b
+        isDown _ = Nothing
+
+-- | event carrying the mouse event up
+mouseButtonUpEvent :: WrappedEvent t -> R.Event t SDL.MouseButton
+mouseButtonUpEvent = filterJust . (isDown <$>) . spill . mouseEvent
+  where isDown (Event _ (MouseButton _ _ b Released _)) = Just b
+        isDown _ = Nothing
+
 -- | mouse button event
 mouseButtonEvent :: WrappedEvent t -> WrappedEvent t
 mouseButtonEvent = collect . filterE isButton . spill
@@ -109,3 +121,5 @@ buttonClick :: MouseButton -> WrappedEvent t -> WrappedEvent t
 buttonClick b = collect . successive sameButton . spill . mouseButtonEvent
   where sameButton (Event _(MouseButton _ _ b1 Pressed _)) e@(Event _ (MouseButton _ _ b2 Released _)) | b1 == b && b2 == b = Just e
         sameButton _ _ = Nothing
+
+
