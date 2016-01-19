@@ -80,6 +80,13 @@ mouseButtonEvent = collect . filterE isButton . spill
           Event _ MouseButton {} -> True
           _ -> False
 
+-- | mouse movement event
+mouseMovementEvent :: WrappedEvent t -> R.Event t SDL.EventData
+mouseMovementEvent = filterJust . (isMovement <$>) . spill . mouseEvent
+  where isMovement e = case e of
+          Event _ b@MouseMotion {} -> Just b
+          _ -> Nothing
+
 -- | mouse event occuring inside a given area
 mouseEventWithin :: Rect -> WrappedEvent t -> WrappedEvent t
 mouseEventWithin ~(Rect x y w h) = collect . filterE isWithin . spill
