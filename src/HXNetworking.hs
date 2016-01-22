@@ -91,9 +91,6 @@ makeNetwork es gd= do
 
     eButton button = mouseButtonDownEvent (mouseEventWithin (rect button) esdl)
 
-    roll :: StdGen -> StdGen
-    roll gen0 = r'
-      where (_::Int, r') = randomR (0, 255) gen0
 
     eButton1MouseDown = updateRectOnMouseDown <$> mouseButtonDownEvent (mouseEventWithin (rect initialButton1) esdl)
     eButton1MouseUp = updateRectOnMouseUp <$> mouseButtonUpEvent (mouseEventWithin (rect initialButton1) esdl)
@@ -133,17 +130,18 @@ updateASOnMovement (MouseMotion _ _ _ pos _ _) (AppState s asRand fRect ) = AppS
 
 updateRectOnMouseDown ::  EventData -> FillRect -> FillRect
 updateRectOnMouseDown _ fRect= FillRect f' (color fRect)
-  where f' = Rect (rectX (rect fRect))
-                  (rectY (rect fRect))
-                  (2 * rectW (rect fRect))
-                  (2 * rectH (rect fRect))
+  where f' = Rect (rectX (rect fRect) - (rectW (rect fRect)) `div` 2)
+                  (rectY (rect fRect) - (rectH (rect fRect)) `div` 2)
+                  w h
+        w = (2 * rectW (rect fRect))
+        h = (2 * rectH (rect fRect))
 
 updateRectOnMouseUp ::  EventData -> FillRect -> FillRect
 updateRectOnMouseUp _ fRect= FillRect f' (color fRect)
-  where f' = Rect (rectX (rect fRect))
-                  (rectY (rect fRect))
-                  (rectW (rect fRect) `div` 2)
-                  (rectH (rect fRect) `div` 2)
+  where f' = Rect (rectX (rect fRect) + w `div` 2)
+                  (rectY (rect fRect) + h `div` 2) w h
+        w = (rectW (rect fRect) `div` 2)
+        h = (rectH (rect fRect) `div` 2)
 
 -- | update app state on key press
 updateASOnKey :: SDL.Keysym -> AppState -> AppState

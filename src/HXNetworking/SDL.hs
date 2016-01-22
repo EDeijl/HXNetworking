@@ -2,6 +2,7 @@ module HXNetworking.SDL where
 
 import           Control.Monad
 import           Data.Word
+import Foreign.ForeignPtr
 import           Graphics.UI.SDL            as SDL
 import           Reactive.Banana            as R
 import           Reactive.Banana.Frameworks (newAddHandler)
@@ -17,7 +18,7 @@ mainSDLPump :: GraphicsData -> SDLEventSource -> IO Bool
 mainSDLPump gd es = do
   setRenderDrawColor (renderer gd) 255 255 255 255
   renderClear (renderer gd)
-  print (window gd)
+  touchForeignPtr (window gd)
   let esdl = getSDLEvent es
       etick = getTickEvent es
   tick <- SDL.getTicks
