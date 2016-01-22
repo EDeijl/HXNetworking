@@ -6,13 +6,16 @@ resolver: lts-4.0
 # Local packages, usually specified by relative directory name
 packages:
 - '.'
-- ../hsSDL2/
-- ../hs-sdl2-image/
+- location:
+    git: git@github.com:sseefried/hsSDL2.git 
+    commit: e824a16c8374173796b607bf976a45c0f79a121e 
+- location:
+    git: git@github.com:jdeseno/hs-sdl2-image.git 
+    commit: 1a7ef66baf96455411433898acab3589f1c4d73d 
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps:
 - reactive-banana-0.8.1.2
-
 # Override default flag values for local packages and extra-deps
 flags: {}
 
